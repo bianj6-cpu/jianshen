@@ -60,6 +60,7 @@ export default function App() {
   const handleGenerate = async (courseNames: string[]) => {
     setIsGenerating(true);
     
+    // 1. Initialize all items as loading
     const newItems: CourseItem[] = courseNames.map(name => ({
       id: Math.random().toString(36).substr(2, 9),
       name,
@@ -72,27 +73,39 @@ export default function App() {
 
     setCourseItems(newItems);
 
-    const processedItems = await Promise.all(newItems.map(async (item) => {
+    // 2. Process sequentially to avoid 429 Rate Limit (Free Tier has low RPM)
+    const processedItems = [...newItems];
+    
+    for (let i = 0; i < processedItems.length; i++) {
+      const item = processedItems[i];
       try {
         const action = await deduceActionFromCourse(item.name);
         const prompt = generatePromptString(action, config);
 
-        return {
+        processedItems[i] = {
           ...item,
           action,
           prompt,
           status: 'success' as const
         };
       } catch (e: any) {
-        return {
+        processedItems[i] = {
           ...item,
           status: 'error' as const,
           errorMsg: e.message
         };
       }
-    }));
 
-    setCourseItems(processedItems);
+      // Update state incrementally so user sees progress
+      setCourseItems([...processedItems]);
+
+      // Add a small delay between requests if not the last item
+      // Free tier allows ~15 RPM, so 2s delay is safe
+      if (i < processedItems.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
     setIsGenerating(false);
   };
 
