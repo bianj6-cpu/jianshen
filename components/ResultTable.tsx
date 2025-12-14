@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CourseItem } from '../types';
-import { Copy, Check, FileText, Download, Image as ImageIcon, Loader2, RefreshCw, Edit2, AlertTriangle } from 'lucide-react';
+import { Copy, Check, FileText, Download, Image as ImageIcon, Loader2, RefreshCw, Edit2, AlertTriangle, Clock } from 'lucide-react';
 
 interface Props {
   items: CourseItem[];
@@ -26,6 +26,11 @@ const ResultTable: React.FC<Props> = ({ items, onGenerateImage, onUpdatePrompt }
     
     navigator.clipboard.writeText(tableHeader + tableBody);
     alert('Markdown表格已复制到剪贴板！');
+  };
+
+  const isRateLimitError = (msg?: string) => {
+    if (!msg) return false;
+    return msg.includes('429') || msg.includes('Quota') || msg.includes('Rate Limit') || msg.includes('wait');
   };
 
   if (items.length === 0) return null;
@@ -137,17 +142,38 @@ const ResultTable: React.FC<Props> = ({ items, onGenerateImage, onUpdatePrompt }
                          </div>
                        )}
                        {item.imageStatus === 'error' && (
-                         <div className="flex flex-col gap-1 items-start">
-                           <div className="flex items-center gap-2">
-                             <span className="text-red-400 text-xs">Failed</span>
-                             <button 
-                               onClick={() => onGenerateImage(item.id)}
-                               className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
-                             >
-                               <RefreshCw className="w-3 h-3" />
-                             </button>
-                           </div>
-                           {item.errorMsg && <span className="text-[10px] text-red-500/70 max-w-[200px] break-words leading-tight">{item.errorMsg}</span>}
+                         <div className="flex flex-col gap-2 items-start w-full">
+                           {isRateLimitError(item.errorMsg) ? (
+                              <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded-lg w-full">
+                                <div className="flex items-center gap-2 text-yellow-400 text-xs font-medium mb-1">
+                                   <Clock className="w-3.5 h-3.5" />
+                                   <span>API 繁忙 (Rate Limit)</span>
+                                </div>
+                                <div className="text-[10px] text-yellow-200/70 leading-tight mb-2">
+                                  请等待20-30秒后再试
+                                </div>
+                                <button 
+                                 onClick={() => onGenerateImage(item.id)}
+                                 className="w-full py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs rounded transition-colors"
+                                >
+                                 重试 (Retry)
+                                </button>
+                              </div>
+                           ) : (
+                             <>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-400 text-xs font-medium">生成失败</span>
+                                  <button 
+                                    onClick={() => onGenerateImage(item.id)}
+                                    className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                                    title="Retry"
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                {item.errorMsg && <span className="text-[10px] text-red-500/70 max-w-[200px] break-words leading-tight">{item.errorMsg}</span>}
+                             </>
+                           )}
                          </div>
                        )}
                     </div>

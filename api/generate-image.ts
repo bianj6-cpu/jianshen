@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 
 export const config = {
   runtime: 'edge',
@@ -14,7 +14,7 @@ export default async function handler(request: Request) {
     const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Server API Key not configured' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Server API Key not configured in Vercel Settings' }), { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -31,11 +31,23 @@ export default async function handler(request: Request) {
       config: {
         imageConfig: {
           aspectRatio: "16:9",
-        }
+        },
+        // Relax safety settings for fitness content
+        safetySettings: [
+          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+        ]
       }
     });
 
     const candidate = response.candidates?.[0];
+    
+    if (candidate?.finishReason === 'SAFETY') {
+      throw new Error("Blocked by safety filters. Try modifying the prompt (avoid specific body parts).");
+    }
+
     if (!candidate || !candidate.content || !candidate.content.parts) {
       throw new Error("No image generated from Gemini");
     }
@@ -58,6 +70,12 @@ export default async function handler(request: Request) {
 
   } catch (error: any) {
     console.error("API Error:", error);
+    
+    // Handle 429 Rate Limit specifically
+    if (error.status === 429 || error.message?.includes('429') || error.message?.includes('Quota exceeded')) {
+      return new Response(JSON.stringify({ error: 'API Rate Limit Exceeded. Please wait 20-30 seconds and try again.' }), { status: 429 });
+    }
+
     return new Response(JSON.stringify({ error: error.message || 'Image Generation Failed' }), { status: 500 });
   }
 }
