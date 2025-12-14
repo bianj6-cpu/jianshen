@@ -1,13 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // We will use a lightweight model for this fast reasoning task
 const MODEL_NAME = "gemini-2.5-flash";
 const IMAGE_MODEL_NAME = "gemini-2.5-flash-image";
 
 export const deduceActionFromCourse = async (courseName: string): Promise<string> => {
   try {
+    // Explicit safety check: Ensure API key is present before initialization
+    // This prevents the SDK from throwing "API Key must be set" error if the environment variable is missing on Vercel
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing. Please check your Vercel Environment Variables.");
+      // Return a safe fallback action so the app doesn't break
+      return "进行健身训练";
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Course Title: "${courseName}"`,
@@ -49,6 +58,14 @@ export const deduceActionFromCourse = async (courseName: string): Promise<string
 
 export const generateImageFromPrompt = async (prompt: string): Promise<string | null> => {
   try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API Key is missing. Please check Vercel Environment Variables.");
+    }
+
+    // Initialize the client inside the function
+    const ai = new GoogleGenAI({ apiKey });
+
     // Clean up prompt for the model: remove Markdown bolding and Midjourney parameters
     // The prompt is now likely in Chinese, which Gemini handles fine.
     const cleanPrompt = prompt.replace(/--ar \d+:\d+/g, '').replace(/\*\*/g, '').trim();
