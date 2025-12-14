@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { CourseItem } from '../types';
-import { Copy, Check, FileText, Download, Image as ImageIcon, Loader2, RefreshCw, Edit2 } from 'lucide-react';
+import { Copy, Check, FileText, Download, Image as ImageIcon, Loader2, RefreshCw, Edit2, AlertTriangle } from 'lucide-react';
 
 interface Props {
   items: CourseItem[];
@@ -82,7 +82,13 @@ const ResultTable: React.FC<Props> = ({ items, onGenerateImage, onUpdatePrompt }
                       Generating Text...
                     </div>
                   ) : item.status === 'error' ? (
-                    <span className="text-red-400 text-sm">Text Generation failed</span>
+                    <div className="flex flex-col gap-1 text-red-400 text-sm">
+                      <div className="flex items-center gap-1">
+                         <AlertTriangle className="w-4 h-4" />
+                         <span>Generation failed</span>
+                      </div>
+                      {item.errorMsg && <span className="text-xs opacity-70 break-words">{item.errorMsg}</span>}
+                    </div>
                   ) : (
                     <div className="relative group/edit">
                       <textarea
@@ -131,14 +137,17 @@ const ResultTable: React.FC<Props> = ({ items, onGenerateImage, onUpdatePrompt }
                          </div>
                        )}
                        {item.imageStatus === 'error' && (
-                         <div className="flex items-center gap-2">
-                           <span className="text-red-400 text-xs">Failed</span>
-                           <button 
-                             onClick={() => onGenerateImage(item.id)}
-                             className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
-                           >
-                             <RefreshCw className="w-3 h-3" />
-                           </button>
+                         <div className="flex flex-col gap-1 items-start">
+                           <div className="flex items-center gap-2">
+                             <span className="text-red-400 text-xs">Failed</span>
+                             <button 
+                               onClick={() => onGenerateImage(item.id)}
+                               className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white"
+                             >
+                               <RefreshCw className="w-3 h-3" />
+                             </button>
+                           </div>
+                           {item.errorMsg && <span className="text-[10px] text-red-500/70 max-w-[200px] break-words leading-tight">{item.errorMsg}</span>}
                          </div>
                        )}
                     </div>

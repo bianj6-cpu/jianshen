@@ -25,22 +25,14 @@ export default function App() {
   const handleConfigChange = (key: keyof AppConfig, value: any) => {
     setConfig(prev => {
       const newConfig = { ...prev, [key]: value };
-      
-      // If we already have generated items, we should update their prompts 
-      // based on the new config, BUT only if they already have an assigned action.
-      // This allows live tweaking of visual style without re-fetching Gemini actions.
       if (courseItems.length > 0) {
         regeneratePromptsWithNewConfig(newConfig);
       }
-      
       return newConfig;
     });
   };
 
   const generatePromptString = (action: string, cfg: AppConfig): string => {
-    // Generate Prompt entirely in Chinese structure as requested
-    // Formula: [Shot] [Nationality] [Gender] coach [Action]. [ArtDirection]. [Atmosphere]. [Light]. Background [Scene]. [Camera]. Suffix.
-    
     const shot = getShotCN(cfg.shot);
     const nationality = getNationalityCN(cfg.nationality);
     const gender = getGenderCN(cfg.gender);
@@ -68,7 +60,6 @@ export default function App() {
   const handleGenerate = async (courseNames: string[]) => {
     setIsGenerating(true);
     
-    // Initialize items with loading state
     const newItems: CourseItem[] = courseNames.map(name => ({
       id: Math.random().toString(36).substr(2, 9),
       name,
@@ -81,13 +72,9 @@ export default function App() {
 
     setCourseItems(newItems);
 
-    // Process each item
     const processedItems = await Promise.all(newItems.map(async (item) => {
       try {
-        // 1. Call Gemini to get the action in Chinese
         const action = await deduceActionFromCourse(item.name);
-        
-        // 2. Generate the prompt string locally in Chinese
         const prompt = generatePromptString(action, config);
 
         return {
@@ -96,10 +83,11 @@ export default function App() {
           prompt,
           status: 'success' as const
         };
-      } catch (e) {
+      } catch (e: any) {
         return {
           ...item,
-          status: 'error' as const
+          status: 'error' as const,
+          errorMsg: e.message
         };
       }
     }));
@@ -109,12 +97,10 @@ export default function App() {
   };
 
   const handleGenerateImage = async (id: string) => {
-    // 1. Set status to loading
     setCourseItems(prev => prev.map(item => 
-      item.id === id ? { ...item, imageStatus: 'loading', imageUrl: null } : item
+      item.id === id ? { ...item, imageStatus: 'loading', imageUrl: null, errorMsg: undefined } : item
     ));
 
-    // 2. Find the item and generate
     const item = courseItems.find(i => i.id === id);
     if (!item || !item.prompt) return;
 
@@ -124,9 +110,9 @@ export default function App() {
       setCourseItems(prev => prev.map(i => 
         i.id === id ? { ...i, imageStatus: 'success', imageUrl: base64Image } : i
       ));
-    } catch (error) {
+    } catch (error: any) {
       setCourseItems(prev => prev.map(i => 
-        i.id === id ? { ...i, imageStatus: 'error' } : i
+        i.id === id ? { ...i, imageStatus: 'error', errorMsg: error.message } : i
       ));
     }
   };
@@ -139,7 +125,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen pb-20">
-      {/* Header */}
       <header className="bg-slate-900/50 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-900/20">
@@ -153,8 +138,6 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        
-        {/* Intro Text */}
         <section className="text-center max-w-2xl mx-auto mb-8">
            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 mb-3">
              Create Cinematic Fitness Prompts
@@ -166,19 +149,15 @@ export default function App() {
            </p>
         </section>
 
-        {/* Configuration */}
         <section>
           <ConfigPanel config={config} onChange={handleConfigChange} />
         </section>
 
-        {/* Input & Results Grid */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left: Input */}
           <div className="lg:col-span-4 h-full">
             <CourseInput onGenerate={handleGenerate} isGenerating={isGenerating} />
           </div>
           
-          {/* Right: Results */}
           <div className="lg:col-span-8">
              <ResultTable 
                items={courseItems} 
@@ -187,7 +166,6 @@ export default function App() {
              />
           </div>
         </section>
-
       </main>
     </div>
   );

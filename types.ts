@@ -26,6 +26,7 @@ export interface CourseItem {
   status: 'idle' | 'loading' | 'success' | 'error';
   imageStatus: 'idle' | 'loading' | 'success' | 'error';
   imageUrl: string | null;
+  errorMsg?: string; // New field for detailed error messages
 }
 
 export interface OptionItem<T> {
