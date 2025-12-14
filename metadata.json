@@ -1,0 +1,5 @@
+{
+  "name": "FitVision AI Prompter",
+  "description": "A high-end visual prompt generator for fitness content, powered by Gemini to deduce specific actions from course titles.",
+  "requestFramePermissions": []
+}
